@@ -1,12 +1,20 @@
-from numpy import block
 import streamlit as st
 import requests
+
+# --------------------------------------------------
+# PAGE SETTINGS
+# --------------------------------------------------
 
 st.set_page_config(
     page_title="CalmSpace",
     page_icon="🧘",
     layout="centered"
 )
+
+# --------------------------------------------------
+# CALMSPACE UI
+# --------------------------------------------------
+
 st.markdown("""
 <style>
 
@@ -14,9 +22,16 @@ st.markdown("""
     background-color: #88B5CC;
 }
 
+.block-container {
+    max-width: 750px;
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+
 h1 {
     color: #29495C !important;
     text-align: center;
+    font-size: 42px;
     font-weight: 700;
 }
 
@@ -25,18 +40,24 @@ h2, h3 {
 }
 
 p, label {
-    color: #334455 !important;
+    color: #1F3545 !important;
 }
 
-textarea {
+.stTextArea textarea {
     background-color: #C9E2EE !important;
+    color: #1F3545 !important;
     border: 1px solid #5D8FA8 !important;
     border-radius: 14px !important;
 }
 
+.stTextArea textarea::placeholder {
+    color: #587080 !important;
+}
+
 .stButton > button {
+    width: 100%;
     background-color: #5D8FA8;
-    color: #FFFFFF;
+    color: white;
     border: none;
     border-radius: 12px;
     padding: 10px 18px;
@@ -45,10 +66,17 @@ textarea {
 
 .stButton > button:hover {
     background-color: #4F7F98;
+    color: white;
 }
 
 </style>
 """, unsafe_allow_html=True)
+
+
+# --------------------------------------------------
+# OLLAMA SETTINGS
+# --------------------------------------------------
+
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL = "gemma3:1b"
 
@@ -66,78 +94,118 @@ def ask_ai(prompt):
         )
 
         if response.status_code == 200:
-            return response.json()["response"]
+            return response.json()["response"].strip()
 
         return "Sorry, I couldn't respond right now."
 
     except requests.exceptions.ConnectionError:
         return "Ollama is not running. Please start Ollama first."
 
-    except Exception as e:
-        return f"Something went wrong: {e}"
+    except requests.exceptions.Timeout:
+        return "The response took too long. Please try again."
+
+    except Exception:
+        return "Something went wrong. Please try again."
 
 
+# --------------------------------------------------
+# MAIN HEADER
+# --------------------------------------------------
 
 st.title("🧘 CalmSpace")
-st.subheader("Pause. Talk. Reset.")
 
-st.write(
+st.markdown(
+    "<p style='text-align:center; font-size:18px;'>"
+    "Pause. Talk. Reset."
+    "</p>",
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    "<p style='text-align:center;'>"
     "A small space to slow down, understand what you're feeling, "
     "and pause before reacting."
+    "</p>",
+    unsafe_allow_html=True
 )
+
+
+# --------------------------------------------------
+# TALK TO ME
+# --------------------------------------------------
+
+st.subheader("💬 Talk to me")
 
 message = st.text_area(
     "What's bothering you?",
-    placeholder="Write what happened or what you're feeling..."
+    placeholder="Write what happened or what you're feeling...",
+    height=150,
+    key="talk_message"
 )
 
-if st.button("💬 Talk to me"):
+if st.button("💬 Talk to me", key="talk_button"):
+
     if message.strip():
 
         prompt = f"""
-You are CalmSpace.
+You are CalmSpace, a simple emotional support chat assistant.
 
-Your job is to help a person slow down and think clearly when they are
-angry, frustrated, stressed, hurt, disappointed, confused, or overwhelmed.
+Your job is to help a person slow down when they are:
+angry, frustrated, hurt, disappointed, stressed, confused, or overwhelmed.
 
 Understand the user's actual situation before responding.
-Do not assume the problem is about studies, exams, relationships, or anything else.
 
-Follow this structure:
+Do NOT assume the problem is about:
+- exams
+- studies
+- friends
+- relationships
+- family
+- work
 
-1. Understanding:
-Write 1-2 sentences showing that you understood what happened and why it may be upsetting.
+unless the user specifically says so.
 
-2. Pause:
-Give ONE short sentence telling the user not to react impulsively while emotions are high.
-Do NOT suggest breathing unless the user specifically asks for it.
+Follow this exact structure:
 
-3. Next step:
-Give ONE practical action that fits the user's actual situation.
+Understanding:
+Write 1 short sentence showing that you understood what happened.
 
-4. Question:
-Ask ONE useful question that helps move the situation forward.
+Pause:
+Write 1 short sentence telling the user not to react impulsively
+while they are upset.
+
+Next step:
+Give exactly ONE practical action that fits the user's situation.
+
+Question:
+Ask exactly ONE simple question that helps understand what the user needs.
 
 STYLE:
-- Simple English
-- Natural and conversational
-- Calm and supportive
-- Concise
+- Simple everyday English
+- Warm and natural
+- Sound like a calm friend
 - Situation-specific
+- Short and useful
+- Do not use dramatic language
+- Do not use therapy-style language
 
 NEVER:
-- Automatically suggest breathing exercises
+- Say "your feelings are valid"
 - Say "take a deep breath"
-- Use exaggerated or dramatic language
-- Use therapy-style language
+- Suggest breathing exercises
+- Suggest meditation
+- Suggest grounding
+- Suggest body awareness
+- Suggest physical exercises
+- Use phrases like "emotional energy"
+- Use the word "grieve" for normal disappointment
 - Give a long list of advice
 - Encourage revenge, aggression, insults, or harmful actions
-- Do not suggest body awareness, meditation, grounding, or physical exercises.
-- Do not ask the user to focus on physical sensations.
-- Do not use phrases like "emotional energy" or "raw feelings".
+- Claim to be a therapist
 
-If the user gives very little information, ask one gentle question
-instead of making assumptions.
+If the user gives very little information,
+do not make assumptions.
+Ask one simple question to understand what happened.
 
 User message:
 {message}
@@ -153,43 +221,59 @@ User message:
         st.warning("Please write something first.")
 
 
+# --------------------------------------------------
+# CALM MY MESSAGE
+# --------------------------------------------------
+
 st.divider()
 
-st.subheader("💬 Calm my message")
+st.subheader("🌿 Calm my message")
 
-angry_message = st.text_area(
-    "Want to rewrite an angry message?",
-    placeholder="Paste the message you feel like sending..."
+st.write(
+    "Write the message you feel like sending. "
+    "CalmSpace will help make it calmer without removing your main point."
 )
 
-if st.button("🌿 Make it calmer"):
+angry_message = st.text_area(
+    "Your message",
+    placeholder="Paste the message you feel like sending...",
+    height=150,
+    key="angry_message"
+)
+
+if st.button("🌿 Make it calmer", key="calm_button"):
+
     if angry_message.strip():
 
         prompt = f"""
 You are CalmSpace's "Calm my message" feature.
 
-The user wrote an emotional or angry message that they may regret sending.
+The user has written an emotional or angry message
+that they may regret sending.
 
-Your job is to rewrite THEIR EXACT MESSAGE into a calmer version.
+Rewrite THEIR EXACT MESSAGE into a calmer version.
 
-Rules:
-- Keep the original meaning and main concern.
-- Keep the message in first person.
-- Do not invent new facts.
+RULES:
+- Keep the original meaning.
+- Keep the main complaint.
+- Keep the important facts.
+- Keep the user's main request.
+- Keep the message in first person when appropriate.
+- Do not invent facts.
 - Do not remove the important issue.
-- Remove insults, blame, threats, and aggressive wording.
-- Make it calm, respectful, and natural.
-- Keep it short.
+- Remove insults, threats, and aggressive wording.
+- Make the message calm, respectful, and natural.
+- Keep it reasonably short.
 - Do not give advice about the situation.
 - Do not explain emotions.
 - Do not say "take a deep breath".
-- Do not start with "Hello" unless the original message starts with a greeting.
-- Preserve every important point from the original message.
-- Do not remove the main complaint or request.
-- Keep the same situation and intent.
-- You may soften the wording, but do not make the message vague.
-- Do not replace specific complaints with generic phrases like
-  "I feel frustrated" or "I am overwhelmed."
+- Do not start with "Hello" unless the original starts with a greeting.
+- Do not make the message vague.
+- Do not replace specific complaints with generic phrases.
+- If the original asks for space, keep the request for space.
+- If the original asks for an explanation, keep that request.
+- If the original identifies a specific problem, keep that problem.
+
 OUTPUT ONLY:
 
 Calmer message:
@@ -211,6 +295,12 @@ Original message:
     else:
         st.warning("Please paste a message first.")
 
+
+# --------------------------------------------------
+# FOOTER
+# --------------------------------------------------
+
+st.divider()
 
 st.caption(
     "CalmSpace is a supportive reflection tool, not a therapist "
